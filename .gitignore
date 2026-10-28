@@ -1,0 +1,29 @@
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+*.local.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+!*.pub
+# Images, VM, installateurs et graines contenant des mots de passe
+*.iso
+*.vhd
+*.vhdx
+*.avhdx
+*.vmdk
+*.ova
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+HyperV/
+secrets/
+# Python / exécution
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.log

@@ -1,0 +1,70 @@
+{
+  "uid": "meteo-synthese",
+  "title": "Météo des instances PostgreSQL",
+  "tags": [
+    "meteo"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Liste",
+      "type": "link",
+      "url": "/d/meteo-liste",
+      "icon": "dashboard"
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "marcusolsson-dynamictext-panel",
+      "title": "Soleil = OK, nuage = attention, orage = alarme, lune = inconnu",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT '/public/img/meteo/' || CASE niveau WHEN 'soleil' THEN 'Soleil.png' WHEN 'nuage' THEN 'nuages.png'\n       WHEN 'orage' THEN 'orages.png' ELSE 'lune_dors.png' END AS icone,\n       instance, niveau,\n       CASE WHEN age_s IS NULL THEN 'pas encore relevé'\n            WHEN statut = 'erreur' THEN 'relevé en erreur il y a ' || age_s || ' s'\n            WHEN niveau = 'inconnu' AND age_s >= (SELECT valeur FROM meteo.parametre WHERE cle = 'peremption_s')\n                 THEN 'dernier relevé trop ancien (' || age_s || ' s)'\n            ELSE niveau || ' - relevé il y a ' || age_s || ' s' END AS texte,\n       COALESCE(erreur, '') AS erreur\nFROM meteo.etat_instance ORDER BY instance"
+        }
+      ],
+      "options": {
+        "renderMode": "allRows",
+        "content": "<div class=\"tuiles\">\n{{#each data}}\n  <a class=\"tuile {{niveau}}\" href=\"/d/meteo-detail?var-instance={{instance}}\" title=\"{{erreur}}\">\n    <img src=\"{{icone}}\" alt=\"{{niveau}}\">\n    <div class=\"nom\">{{instance}}</div>\n    <div class=\"detail\">{{texte}}</div>\n  </a>\n{{/each}}\n</div>",
+        "defaultContent": "Aucune instance active dans meteo.instance.",
+        "styles": ".tuiles { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px; }\n.tuile { display: flex; flex-direction: column; align-items: center; width: 170px; padding: 14px 8px;\n         border: 2px solid #666; border-radius: 10px; text-decoration: none; color: inherit; }\n.tuile:hover { background: rgba(128,128,128,.15); }\n.tuile img { width: 96px; height: 96px; object-fit: contain; }\n.tuile .nom { margin-top: 8px; font-size: 1.2em; font-weight: 600; }\n.tuile .detail { font-size: .8em; opacity: .8; }\n.tuile.soleil { border-color: #3cb371; } .tuile.nuage { border-color: #f5a623; }\n.tuile.orage { border-color: #e03b3b; } .tuile.inconnu { border-color: #8e6bbf; }",
+        "helpers": "",
+        "afterRender": "",
+        "contentPartials": [],
+        "externalStyles": [],
+        "wrap": true
+      }
+    }
+  ]
+}

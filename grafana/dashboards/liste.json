@@ -1,0 +1,156 @@
+{
+  "uid": "meteo-liste",
+  "title": "Météo des instances PostgreSQL (liste)",
+  "tags": [
+    "meteo"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Une ligne par instance : soleil = OK, nuage = attention, orage = alarme, lune = inconnu",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT '/public/img/meteo/' || CASE niveau WHEN 'soleil' THEN 'Soleil.png' WHEN 'nuage' THEN 'nuages.png' WHEN 'orage' THEN 'orages.png' ELSE 'lune_dors.png' END AS \"Météo\",\n       instance AS \"Instance\", niveau AS \"Etat\", statut AS \"Relevé\",\n       age_s AS \"Âge du relevé (s)\", erreur AS \"Erreur\"\nFROM meteo.etat_instance ORDER BY instance"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Météo"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "image",
+                  "alt": "météo",
+                  "title": "météo"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Etat"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "soleil": {
+                        "text": "soleil",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "nuage": {
+                        "text": "nuage",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "orage": {
+                        "text": "orage",
+                        "color": "red",
+                        "index": 2
+                      },
+                      "inconnu": {
+                        "text": "inconnu",
+                        "color": "purple",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Détail de ${__value.raw}",
+                    "url": "/d/meteo-detail?var-instance=${__value.raw}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "lg"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Tuiles",
+      "type": "link",
+      "url": "/d/meteo-synthese",
+      "icon": "dashboard"
+    }
+  ]
+}

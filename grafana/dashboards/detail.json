@@ -1,0 +1,394 @@
+{
+  "uid": "meteo-detail",
+  "title": "Détail d'une instance PostgreSQL",
+  "tags": [
+    "meteo"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 8,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Synthèse",
+      "type": "link",
+      "url": "/d/meteo-synthese",
+      "icon": "dashboard"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Instance",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "meteo-pg"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "query": "SELECT nom FROM meteo.instance WHERE actif ORDER BY nom",
+        "definition": "SELECT nom FROM meteo.instance WHERE actif ORDER BY nom",
+        "current": {},
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "État de l'instance",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT niveau AS \"Etat\", statut AS \"Relevé\", derniere_collecte AS \"Dernier relevé\", age_s AS \"Âge (s)\", erreur AS \"Erreur\"\nFROM meteo.etat_instance WHERE instance = '$instance'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Etat"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "soleil": {
+                        "text": "soleil",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "nuage": {
+                        "text": "nuage",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "orage": {
+                        "text": "orage",
+                        "color": "red",
+                        "index": 2
+                      },
+                      "inconnu": {
+                        "text": "inconnu",
+                        "color": "purple",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Indicateurs et seuils",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT '/public/img/meteo/' || CASE niveau WHEN 'soleil' THEN 'Soleil.png' WHEN 'nuage' THEN 'nuages.png' WHEN 'orage' THEN 'orages.png' ELSE 'lune_dors.png' END AS \"Météo\", libelle AS \"Indicateur\", valeur AS \"Valeur\", unite AS \"Unité\",\n       warning AS \"Seuil nuage\", alarme AS \"Seuil orage\", niveau AS \"Etat\"\nFROM meteo.etat_indicateur WHERE instance = '$instance' ORDER BY ordre"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Météo"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "image",
+                  "alt": "météo",
+                  "title": "météo"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Etat"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "soleil": {
+                        "text": "soleil",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "nuage": {
+                        "text": "nuage",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "orage": {
+                        "text": "orage",
+                        "color": "red",
+                        "index": 2
+                      },
+                      "inconnu": {
+                        "text": "inconnu",
+                        "color": "purple",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Indicateur"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 240
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Processus du dernier relevé : requêtes en cours, bloqués et bloqueurs",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH dernier AS (\n  SELECT dm.mesure_id FROM meteo.derniere_mesure dm JOIN meteo.instance i USING (instance_id)\n  WHERE i.nom = '$instance' AND dm.statut = 'ok'\n), t AS (\n  SELECT p.* FROM meteo.processus p JOIN dernier USING (mesure_id)\n)\nSELECT pid AS \"pid\", login AS \"Login\", base AS \"Base\", hote AS \"Hôte\", programme AS \"Programme\",\n       cmd AS \"Commande\", statut AS \"Statut\", attente AS \"Attente\", bloqueur_pid AS \"Bloqué par\",\n       blocage_s AS \"Blocage (s)\", execution_s AS \"Requête (s)\"\nFROM t\nUNION ALL\nSELECT NULL, 'Aucune requête en cours ni blocage', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL\nWHERE EXISTS (SELECT 1 FROM dernier) AND NOT EXISTS (SELECT 1 FROM t)\nORDER BY \"Blocage (s)\" DESC NULLS LAST, \"Requête (s)\" DESC NULLS LAST, \"pid\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Commande"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Login"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Transactions ouvertes, de la plus longue à la plus courte",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "meteo-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "meteo-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH dernier AS (\n  SELECT dm.mesure_id FROM meteo.derniere_mesure dm JOIN meteo.instance i USING (instance_id)\n  WHERE i.nom = '$instance' AND dm.statut = 'ok'\n), t AS (\n  SELECT x.* FROM meteo.processus x JOIN dernier USING (mesure_id) WHERE x.transaction_s IS NOT NULL\n)\nSELECT transaction_s AS \"Durée (s)\", to_char(transaction_debut, 'YYYY-MM-DD HH24:MI:SS') AS \"Début\", pid AS \"pid\", login AS \"Login\",\n       base AS \"Base\", hote AS \"Hôte\", programme AS \"Programme\", cmd AS \"Commande\", statut AS \"Statut\"\nFROM t\nUNION ALL\nSELECT NULL, NULL, NULL, 'Aucune transaction ouverte', NULL, NULL, NULL, NULL, NULL\nWHERE EXISTS (SELECT 1 FROM dernier) AND NOT EXISTS (SELECT 1 FROM t)\nORDER BY \"Durée (s)\" DESC NULLS LAST, \"pid\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Commande"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Login"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ]
+}
