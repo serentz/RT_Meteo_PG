@@ -23,6 +23,20 @@ class TestConfig(unittest.TestCase):
     def test_le_dsn_n_apparait_pas_dans_repr(self):
         self.assertNotIn("secret", repr(Reglages.depuis_env({"SCRUTATEUR_STOCKAGE_DSN": "postgresql://u:secret@pg01/meteo"})))
 
+    def test_partition_et_etalement(self):
+        base = {"SCRUTATEUR_STOCKAGE_DSN": "x"}
+        r = Reglages.depuis_env(base)
+        self.assertEqual((r.partition_index, r.partition_total, r.etalement_s), (0, 1, 20.0))
+        r = Reglages.depuis_env({**base, "SCRUTATEUR_PARTITION": "2/4", "SCRUTATEUR_ETALEMENT_S": "0"})
+        self.assertEqual((r.partition_index, r.partition_total, r.etalement_s), (2, 4, 0.0))
+
+    def test_partition_ou_etalement_invalides(self):
+        base = {"SCRUTATEUR_STOCKAGE_DSN": "x"}
+        for cle, val in [("SCRUTATEUR_PARTITION", "4/4"), ("SCRUTATEUR_PARTITION", "-1/2"), ("SCRUTATEUR_PARTITION", "0/0"),
+                         ("SCRUTATEUR_PARTITION", "deux"), ("SCRUTATEUR_ETALEMENT_S", "31"), ("SCRUTATEUR_ETALEMENT_S", "-1")]:
+            with self.subTest(cle=cle, val=val), self.assertRaises(ErreurConfiguration):
+                Reglages.depuis_env({**base, cle: val})
+
     def test_pire_duree_de_releve(self):
         self.assertEqual(Reglages(stockage_dsn="x").pire_duree_releve_s, 40)  # connexion 10 s + deux requetes de 15 s
 

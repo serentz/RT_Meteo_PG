@@ -1,0 +1,26 @@
+[Unit]
+Description=Scrutateur RT_Meteo_PG, partition %i (releve d'une partie des instances PostgreSQL)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=scrutateur
+Group=scrutateur
+# Fichier root:scrutateur, mode 0640, hors Git (modele : scrutateur.env.example)
+EnvironmentFile=/etc/scrutateur/scrutateur.env
+# Contient SCRUTATEUR_PARTITION=%i/N (ex. 0/2), un fichier par partition
+EnvironmentFile=/etc/scrutateur/partition-%i.env
+WorkingDirectory=/opt/scrutateur/app
+ExecStart=/opt/scrutateur/venv/bin/python -m scrutateur
+Restart=on-failure
+RestartSec=10
+# Un releve en cours se termine en 40 s au plus (delais cible, 2 requetes) avant l'arret
+TimeoutStopSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

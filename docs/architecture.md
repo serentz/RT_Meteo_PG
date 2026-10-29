@@ -28,6 +28,8 @@ Intervalle : 60 secondes (`SCRUTATEUR_INTERVALLE_S`), cadence fixe sans dérive.
 
 **Parallélisme.** Chaque instance est relevée dans son propre thread (16 au maximum, `SCRUTATEUR_MAX_PARALLELE`). La panne ou la lenteur d'une instance ne retarde pas les autres. Si le relevé précédent d'une instance n'est pas terminé, elle est sautée au lieu d'empiler des relevés. Les délais de connexion (10 s) et de requête (15 s, `statement_timeout` côté serveur, pour le contrôle des droits puis la requête principale) bornent la durée d'un relevé à 40 s.
 
+**Passage à l'échelle.** Les départs des relevés d'un cycle sont répartis sur `SCRUTATEUR_ETALEMENT_S` (20 s) au lieu d'une rafale à la même seconde. Plusieurs scrutateurs peuvent se partager les instances (`SCRUTATEUR_PARTITION=i/N` : instance_id % N = i), sans coordination ; un avertissement signale quand il y a plus de relevés en cours que de threads. Dimensionnement : `docs/scrutateur.md`, section 5.
+
 **Unité de travail.** `collecter_et_enregistrer(instance, source, depot)` (module `scrutateur/collecte.py`) relève une instance et met à jour le stockage ; elle ne lève jamais d'exception. Un échec devient une mesure `erreur`. L'écriture se fait par un seul appel à la fonction SQL `meteo.enregistrer_mesure(...)`.
 
 **Source : une requête principale** sur `pg_stat_activity` et `pg_blocking_pids()` (texte dans `sql/cible/supervision.sql`). Elle rend un tableau, lu en mémoire par le scrutateur ; c'est de ce tableau que sont calculés tous les indicateurs et que vient le détail des processus. Colonnes :

@@ -354,9 +354,55 @@ Depuis le navigateur du PC Windows : `http://192.168.50.10:3000`. Premier accès
 
 Si les tableaux sont vides ou en erreur : *Connections → Data sources → meteo → Save & test*. Une erreur d'authentification vient de `METEO_GRAFANA_PWD` ou de la ligne `grafana_ro` dans `pg_hba.conf` (1.3) ; `sudo journalctl -u grafana-server -n 30 --no-pager` donne le détail.
 
+## 5. Passage à l'échelle (100 ou 200 instances)
+
+**Un scrutateur gère déjà plusieurs instances** : chaque relevé tourne dans son propre thread (`SCRUTATEUR_MAX_PARALLELE`, 16 par défaut). La limite est le nombre de « secondes-thread » par minute : `threads nécessaires ≈ nombre d'instances × durée d'un relevé ÷ 60`, auxquels s'ajoutent les instances en panne (jusqu'à 10 s de délai de connexion chacune). On dimensionne sur le pire cas.
+
+### 5.1 Mesurer la durée d'un relevé (sur pg01)
+
+```bash
+sudo -u postgres psql -d meteo
+```
+
+```sql
+SELECT i.nom, count(*) AS releves, round(avg(m.duree_ms)) AS moy_ms,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY m.duree_ms) AS p95_ms,
+       max(m.duree_ms) AS max_ms
+FROM meteo.mesure m JOIN meteo.instance i USING (instance_id)
+WHERE m.collecte_le > now() - interval '1 hour' AND m.statut = 'ok'
+GROUP BY i.nom ORDER BY p95_ms DESC;
+```
+
+Exemple : 200 instances à 0,5 s (p95) = 100 s-thread par minute, soit environ 2 threads occupés ; 20 instances en panne à 10 s = 200 s-thread, soit environ 3,5 threads de plus. 16 threads suffisent largement ; au-delà, monter `SCRUTATEUR_MAX_PARALLELE` (32 ou 64, ce sont des threads qui attendent le réseau). Vérifier alors `max_connections` sur pg01 et sur les instances.
+
+### 5.2 Étalement des relevés (activé par défaut)
+
+Au lieu de lancer les 200 relevés à la même seconde, le scrutateur répartit régulièrement leurs départs sur `SCRUTATEUR_ETALEMENT_S` secondes (20 par défaut, 0 pour désactiver, au plus la moitié de l'intervalle). Cela évite la rafale de connexions vers pg01 et vers les instances, et réduit le nombre de threads nécessaires. La cadence de chaque instance reste d'un relevé par minute. En mode `--une-fois`, il n'y a pas d'étalement.
+
+### 5.3 Plusieurs scrutateurs sur le bastion (partition)
+
+Le scrutateur `i/N` (`i` de 0 à N-1) ne relève que les instances dont `instance_id % N = i` : chaque instance est relevée par un seul scrutateur, aucune n'est oubliée, et une instance ajoutée est attribuée toute seule. Exemple avec deux scrutateurs (sur le bastion) :
+
+```bash
+sudo install -m 0644 ~/RT_Meteo_PG/scrutateur/deploy/scrutateur@.service /etc/systemd/system/scrutateur@.service
+echo 'SCRUTATEUR_PARTITION=0/2' | sudo tee /etc/scrutateur/partition-0.env
+echo 'SCRUTATEUR_PARTITION=1/2' | sudo tee /etc/scrutateur/partition-1.env
+sudo chown root:scrutateur /etc/scrutateur/partition-*.env
+sudo systemctl daemon-reload
+sudo systemctl disable --now scrutateur
+sudo systemctl enable --now scrutateur@0 scrutateur@1
+sudo journalctl -u 'scrutateur@*' -f
+```
+
+Chaque journal indique `Cycle (partition i/N) : k instance(s) lancée(s) sur n`. Si un scrutateur s'arrête, ses instances passent en « inconnu » au bout de 180 s (jamais de faux soleil) : le contrôle se fait sur `meteo.etat_instance`. Pour changer N, modifier **tous** les fichiers `partition-*.env` puis redémarrer tous les services (sinon des instances seraient relevées deux fois ou jamais).
+
+### 5.4 Signal de saturation
+
+Si plus de relevés sont en cours qu'il n'y a de threads, le journal affiche `N releves en cours pour M thread(s) : des releves attendent un thread` : augmenter `SCRUTATEUR_MAX_PARALLELE` ou ajouter une partition. Un relevé en retard dont le suivant arrive est sauté (`releve precedent toujours en cours`).
+
 ## Réglages
 
-Variables de `/etc/scrutateur/scrutateur.env` (valeurs par défaut entre parenthèses) : `SCRUTATEUR_INTERVALLE_S` (60), `SCRUTATEUR_MAX_PARALLELE` (16), `SCRUTATEUR_CIBLE_CONNEXION_TIMEOUT_S` (10), `SCRUTATEUR_CIBLE_REQUETE_TIMEOUT_S` (15), `SCRUTATEUR_CIBLE_SSLMODE` (`prefer` ; `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`). Après modification : `sudo systemctl restart scrutateur`. Le scrutateur avertit au démarrage si un relevé peut dépasser l'intervalle.
+Variables de `/etc/scrutateur/scrutateur.env` (valeurs par défaut entre parenthèses) : `SCRUTATEUR_INTERVALLE_S` (60), `SCRUTATEUR_MAX_PARALLELE` (16), `SCRUTATEUR_CIBLE_CONNEXION_TIMEOUT_S` (10), `SCRUTATEUR_CIBLE_REQUETE_TIMEOUT_S` (15), `SCRUTATEUR_CIBLE_SSLMODE` (`prefer` ; `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`), `SCRUTATEUR_ETALEMENT_S` (20), `SCRUTATEUR_PARTITION` (vide = un seul scrutateur, sinon `i/N`). Après modification : `sudo systemctl restart scrutateur`. Le scrutateur avertit au démarrage si un relevé peut dépasser l'intervalle.
 
 ## Dépannage
 

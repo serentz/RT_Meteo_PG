@@ -58,7 +58,11 @@ def main(argv: list[str] | None = None) -> int:
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: arret.set())
 
-    journal.info("Demarrage : intervalle %.0f s, %d releve(s) en parallele maximum", reglages.intervalle_s, reglages.max_parallele)
+    journal.info(
+        "Demarrage : partition %d/%d, intervalle %.0f s, etalement %.0f s, %d releve(s) en parallele maximum",
+        reglages.partition_index, reglages.partition_total, reglages.intervalle_s, reglages.etalement_s,
+        reglages.max_parallele,
+    )
     Scrutateur(reglages, depot, source).executer(arret, une_fois=args.une_fois)
     journal.info("Arret")
     return 0
