@@ -53,6 +53,21 @@ class TestGrafana(unittest.TestCase):
                 for png in re.findall(r"'([A-Za-z_]+\.png)'", sql):
                     self.assertTrue((images / png).is_file(), png)
 
+    def test_detail_panneau_etat_assez_haut_et_panneaux_sans_chevauchement(self):
+        panneaux = sorted(tableaux_de_bord()["detail.json"]["panels"], key=lambda p: p["gridPos"]["y"])
+        self.assertGreaterEqual(panneaux[0]["gridPos"]["h"], 4, "la ligne de l'etat de l'instance serait tronquee")
+        for haut, bas in zip(panneaux, panneaux[1:]):
+            self.assertEqual(haut["gridPos"]["y"] + haut["gridPos"]["h"], bas["gridPos"]["y"])
+
+    def test_detail_tableaux_a_colonnes_etroites_tiennent_dans_la_largeur(self):
+        # sans largeur explicite et trop large, la derniere colonne (Blocage) sort de l'ecran
+        for p in tableaux_de_bord()["detail.json"]["panels"]:
+            if p["id"] in (3, 4):
+                largeurs = [o["properties"][0]["value"] for o in p["fieldConfig"]["overrides"]
+                            if o["properties"][0]["id"] == "custom.width"]
+                self.assertTrue(largeurs)
+                self.assertLessEqual(sum(largeurs), 1100)
+
 
 if __name__ == "__main__":
     unittest.main()
