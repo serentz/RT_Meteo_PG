@@ -68,6 +68,12 @@ class TestGrafana(unittest.TestCase):
                 self.assertTrue(largeurs)
                 self.assertLessEqual(sum(largeurs), 1100)
 
+    def test_synthese_et_liste_classent_les_pires_etats_en_premier(self):
+        # avec 100 ou 200 instances, un orage ne doit jamais se cacher sous la ligne de flottaison
+        for nom in ("synthese.json", "liste.json"):
+            sql = tableaux_de_bord()[nom]["panels"][0]["targets"][0]["rawSql"]
+            self.assertIn("WHEN 'orage' THEN 0 WHEN 'inconnu' THEN 1 WHEN 'nuage' THEN 2 ELSE 3 END, instance", sql, nom)
+
 
 if __name__ == "__main__":
     unittest.main()

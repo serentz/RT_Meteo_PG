@@ -6,7 +6,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -25,7 +25,7 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 14
+        "h": 24
       },
       "targets": [
         {
@@ -37,7 +37,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "SELECT '/public/img/meteo/' || CASE niveau WHEN 'soleil' THEN 'Soleil.png' WHEN 'nuage' THEN 'nuages.png' WHEN 'orage' THEN 'orages.png' ELSE 'lune_dors.png' END AS \"Météo\",\n       instance AS \"Instance\", niveau AS \"Etat\", statut AS \"Relevé\",\n       age_s AS \"Âge du relevé (s)\", erreur AS \"Erreur\"\nFROM meteo.etat_instance ORDER BY instance"
+          "rawSql": "SELECT '/public/img/meteo/' || CASE niveau WHEN 'soleil' THEN 'Soleil.png' WHEN 'nuage' THEN 'nuages.png' WHEN 'orage' THEN 'orages.png' ELSE 'lune_dors.png' END AS \"Météo\",\n       instance AS \"Instance\", niveau AS \"Etat\", statut AS \"Relevé\",\n       age_s AS \"Âge du relevé (s)\", erreur AS \"Erreur\"\nFROM meteo.etat_instance ORDER BY CASE niveau WHEN 'orage' THEN 0 WHEN 'inconnu' THEN 1 WHEN 'nuage' THEN 2 ELSE 3 END, instance"
         }
       ],
       "fieldConfig": {
