@@ -451,8 +451,14 @@ Le test affiche `OK : tous les controles du schema sont passes` avant la derniè
 
 Réalisé dans l'environnement de préparation (Linux, PostgreSQL 16) :
 
-- 60 tests Python (calculs sur le tableau, lecture d'une instance avec un faux pilote `psycopg`, contrôle de `pg_monitor`, parallélisme, panne d'une instance, relecture de `meteo.instance`, panne du stockage, mot de passe masqué, cohérence entre la requête, le fichier SQL et le schéma) ;
+- 72 tests Python (calculs sur le tableau, lecture d'une instance avec un faux pilote `psycopg`, contrôle de `pg_monitor`, parallélisme, panne d'une instance, relecture de `meteo.instance`, panne du stockage, mot de passe masqué, cohérence entre la requête, le fichier SQL et le schéma) ;
 - schéma, vues, fonction d'écriture et droits des rôles testés sur un vrai PostgreSQL 16 (`tests/stockage/test_schema.sql`) ;
 - requête de `sql/cible/supervision.sql` exécutée sur un vrai PostgreSQL 16 avec bloqueur, session bloquée, requête longue, transaction ouverte inactive et login sans `pg_monitor`.
 
-**Non réalisé, à valider sur les VM** : connexion réelle du scrutateur avec `psycopg` (le module n'était pas installable dans l'environnement de préparation), service systemd, création des VM par le script PowerShell (pg02), Grafana (tuiles, liste, détail, panneau des transactions), scénarios de 2.6 avec les seuils (provisoires), et `blocage_s` (approximation : durée de l'instruction bloquée, PostgreSQL n'indiquant pas le début de l'attente).
+Validé sur les VM Hyper-V (bastion, `pg01` pour le stockage, `pg02`, Ubuntu 24.04, PostgreSQL 16.15) :
+
+- création des trois VM par `create_vms.ps1` ;
+- scrutateur avec `psycopg` : relevé réel (`--tester`), service systemd, deux instances surveillées (`pg01` et `pg02`), sans WARNING ni ERROR dans le journal ;
+- Grafana : synthèse, liste et détail, avec les scénarios soleil, requête longue, blocage, transaction ouverte, arrêt (lune) et reprise (voir [captures.md](captures.md)).
+
+**Reste à valider** : les seuils (provisoires), le test des partitions (`scrutateur@0` et `@1`) et de l'étalement avec des instances PostgreSQL réellement distinctes (ils ont été validés sur le projet SAP ASE avec 41 instances simulées), et `blocage_s` (approximation : durée de l'instruction bloquée, PostgreSQL n'indiquant pas le début de l'attente).
