@@ -235,6 +235,8 @@ Les commandes suivantes se tapent dans le dossier qui contient `scrutateur/`.
 
 ### 3.2 Installer (sur le bastion)
 
+Bastion sous RHEL 8.10 au lieu d'Ubuntu : voir [la variante RHEL](#variante--bastion-sous-rhel-810).
+
 ```bash
 sudo apt install -y python3-venv
 sudo useradd --system --home-dir /opt/scrutateur --shell /usr/sbin/nologin scrutateur
@@ -399,6 +401,68 @@ Chaque journal indique `Cycle (partition i/N) : k instance(s) lancée(s) sur n`.
 ### 5.4 Signal de saturation
 
 Si plus de relevés sont en cours qu'il n'y a de threads, le journal affiche `N releves en cours pour M thread(s) : des releves attendent un thread` : augmenter `SCRUTATEUR_MAX_PARALLELE` ou ajouter une partition. Un relevé en retard dont le suivant arrive est sauté (`releve precedent toujours en cours`).
+
+## Variante : bastion sous RHEL 8.10
+
+Tout ce document a été validé avec un bastion **Ubuntu 24.04**. Si le bastion est sous **RHEL 8.10**, le scrutateur (code Python, service systemd, configuration) et les tableaux de bord Grafana sont les mêmes ; seules changent l'installation des paquets et quelques points propres à RHEL. Cette variante **n'a pas été testée** : à valider sur la machine et à corriger ici si besoin. Les exemples utilisent Python 3.11 (3.9 ou 3.12 conviennent aussi) et SELinux en mode `enforcing`.
+
+### Python : le point bloquant
+
+Sur RHEL 8.10, `python3` est en version 3.6, trop ancienne pour `psycopg` 3 (3.8 minimum). Installer une version plus récente et créer le venv avec elle. Le paquet `python3-venv` n'existe pas sous RHEL : le module `venv` est inclus dans `python3.11`.
+
+Paquets et installation du scrutateur, à la place de la section 3.2 :
+
+```bash
+sudo dnf install -y git python3.11 python3.11-pip
+sudo useradd --system --home-dir /opt/scrutateur --shell /sbin/nologin scrutateur
+sudo mkdir -p /opt/scrutateur/app /etc/scrutateur
+sudo cp -r scrutateur /opt/scrutateur/app/
+sudo python3.11 -m venv /opt/scrutateur/venv
+sudo /opt/scrutateur/venv/bin/pip install -r /opt/scrutateur/app/scrutateur/requirements.txt
+sudo install -m 0640 -o root -g scrutateur scrutateur/deploy/scrutateur.env.example /etc/scrutateur/scrutateur.env
+sudo install -m 0644 scrutateur/deploy/scrutateur.service /etc/systemd/system/scrutateur.service
+sudo systemctl daemon-reload
+```
+
+`psycopg[binary]` embarque `libpq` : aucun paquet système supplémentaire. Les tests (`python3.11 -m unittest discover -s tests -t . -v`) se lancent de la même façon.
+
+### Client PostgreSQL, Grafana, pare-feu, SELinux
+
+| Sujet | Ubuntu 24.04 (documenté) | RHEL 8.10 |
+|---|---|---|
+| Client `psql` sur le bastion | `apt install -y postgresql-client` | `sudo dnf install -y postgresql` |
+| Grafana | dépôt `apt.grafana.com` | dépôt RPM, voir ci-dessous |
+| Pare-feu | aucun à ouvrir par défaut | `sudo firewall-cmd --permanent --add-port=3000/tcp && sudo firewall-cmd --reload` |
+| Locale (`en_US.UTF-8`) | `locale-gen` | `sudo dnf install -y glibc-langpack-en` |
+
+Grafana (les commandes de configuration de la section 4 sont inchangées : mêmes chemins `/etc/grafana`, `/var/lib/grafana` et `/usr/share/grafana`) :
+
+```bash
+sudo tee /etc/yum.repos.d/grafana.repo > /dev/null <<'EOT'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+EOT
+sudo dnf install -y grafana
+sudo systemctl enable --now grafana-server
+```
+
+**SELinux.** Il est actif par défaut sous RHEL. En cas de refus (connexion de Grafana ou du scrutateur vers PostgreSQL, lecture des tableaux de bord copiés dans `/var/lib/grafana/dashboards/meteo/`), lister les refus avant d'agir :
+
+```bash
+sudo ausearch -m avc -ts recent
+sudo restorecon -Rv /var/lib/grafana/dashboards /usr/share/grafana/public/img/meteo
+```
+
+`restorecon` remet les contextes SELinux des fichiers copiés à la main. Ne pas passer SELinux en `permissive` ou `disabled` sans avoir regardé les refus : un module de politique ciblé (`audit2allow`) suffit en général.
+
+**systemd.** RHEL 8.10 embarque systemd 239 : les options de durcissement des fichiers `scrutateur.service` et `scrutateur@.service` (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`, `ProtectHome`) y sont disponibles, et le modèle `scrutateur@.service` (partition) fonctionne de la même façon.
 
 ## Réglages
 
