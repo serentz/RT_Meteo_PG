@@ -42,6 +42,43 @@ Sans `git` ou sans accès à GitHub, copier le dossier depuis Windows (PowerShel
 scp -r I:\POC\RT_Meteo_PG\scrutateur I:\POC\RT_Meteo_PG\sql COMPTE@ADRESSE_DU_BASTION:~/RT_Meteo_PG/
 ```
 
+## 2bis. Stockage sur un serveur PostgreSQL existant (accès par `psql` et `~/.pgpass`)
+
+Cette section remplace les sections 1.1 à 1.3 de [scrutateur.md](scrutateur.md) quand la base de stockage (`meteo`) est créée sur un **serveur PostgreSQL déjà en place** (version 15 ou plus), joint depuis le bastion avec `psql`. Aucun nom de serveur n'est écrit dans ce dépôt : remplacer `SERVEUR_PG` par le nom complet du serveur.
+
+**Mots de passe : `~/.pgpass`.** `psql` et `psycopg` (donc le scrutateur) lisent `~/.pgpass` quand aucun mot de passe n'est donné. Une ligne par rôle, au format `serveur:port:base:rôle:mot_de_passe` (fichier en mode `0600`, sinon il est ignoré ; échapper `\` et `:` dans le mot de passe par un `\` devant). Pour ne pas laisser le mot de passe dans l'historique du shell :
+
+```bash
+read -rsp "Mot de passe du rôle scrutateur : " P; echo
+printf '%s\n' "SERVEUR_PG:5432:meteo:scrutateur:$P" >> ~/.pgpass
+unset P
+chmod 600 ~/.pgpass
+```
+
+Avec cela, la ligne du fichier `scrutateur.env` (étape 4) ne contient **aucun mot de passe** :
+
+```
+SCRUTATEUR_STOCKAGE_DSN=postgresql://scrutateur@SERVEUR_PG:5432/meteo
+```
+
+**Créer la base et les rôles** (compte administrateur du serveur, `postgres` ici, dont le mot de passe est dans `~/.pgpass`). `/usr/pgsql-17/bin` n'est pas dans le `PATH` par défaut : utiliser le chemin complet, ou l'ajouter dans la session.
+
+```bash
+export PATH="$PATH:/usr/pgsql-17/bin"
+cd ~/RT_Meteo_PG
+psql -h SERVEUR_PG -U postgres -d postgres -c "SELECT version()"
+psql -h SERVEUR_PG -U postgres -d postgres -c "CREATE DATABASE meteo"
+psql -h SERVEUR_PG -U postgres -d meteo -v ON_ERROR_STOP=1 -f sql/stockage/001_schema.sql
+psql -h SERVEUR_PG -U postgres -d meteo -v ON_ERROR_STOP=1 \
+  -v pwd_scrutateur='MOT_DE_PASSE_1' -v pwd_grafana='MOT_DE_PASSE_2' -f sql/stockage/002_roles.sql
+psql -h SERVEUR_PG -U postgres -d meteo -c "\dt meteo.*"
+```
+
+- Les rôles `scrutateur` et `grafana_ro` sont créés **au niveau du serveur** (partagés entre toutes ses bases) : s'assurer auprès de l'administrateur du serveur qu'ils n'existent pas déjà et qu'il accepte la création d'une base `meteo`.
+- Le serveur doit autoriser ces deux rôles sur la base `meteo`, depuis l'adresse du bastion (et de Grafana), dans son `pg_hba.conf` : `host meteo scrutateur ADRESSE_BASTION/32 scram-sha-256` et la ligne équivalente pour `grafana_ro`, puis rechargement (`SELECT pg_reload_conf()`). Sans accès à ce fichier, le demander à l'administrateur.
+- Ajouter ensuite les lignes de `~/.pgpass` des deux rôles, puis contrôler : `psql -h SERVEUR_PG -U scrutateur -d meteo -c "SELECT nom, actif FROM meteo.instance"` doit répondre sans demander de mot de passe.
+- Déclarer les instances surveillées avec `INSERT INTO meteo.instance …` (voir la section 1.4 de [scrutateur.md](scrutateur.md)), en lançant `psql -h SERVEUR_PG -U postgres -d meteo` au lieu de `sudo -u postgres psql -d meteo`.
+
 ## 3. Environnement Python (dans le dossier personnel)
 
 ### 3.1 Dossiers et copie du code
@@ -89,7 +126,7 @@ chmod 600 ~/scrutateur/scrutateur.env
 nano ~/scrutateur/scrutateur.env
 ```
 
-Remplacer `CHANGER_MOI` dans la ligne `SCRUTATEUR_STOCKAGE_DSN=postgresql://scrutateur:CHANGER_MOI@pg01:5432/meteo` par le mot de passe du rôle `scrutateur` de pg01. Si le mot de passe contient `@ : / ? # %`, l'encoder dans l'URL (`@` devient `%40`) :
+Remplacer `CHANGER_MOI` (ou, avec un `~/.pgpass`, le retirer : voir la section 2bis) dans la ligne `SCRUTATEUR_STOCKAGE_DSN=postgresql://scrutateur:CHANGER_MOI@pg01:5432/meteo` par le mot de passe du rôle `scrutateur` de pg01. Si le mot de passe contient `@ : / ? # %`, l'encoder dans l'URL (`@` devient `%40`) :
 
 ```bash
 python3 -c "import urllib.parse,getpass;print(urllib.parse.quote(getpass.getpass(),safe=''))"
