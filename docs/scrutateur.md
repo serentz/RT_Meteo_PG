@@ -404,11 +404,13 @@ Si plus de relevés sont en cours qu'il n'y a de threads, le journal affiche `N 
 
 ## Variante : bastion sous RHEL 8.10
 
+**Procédure complète pas à pas : [installation_rhel8.md](installation_rhel8.md)** (Python installé en local dans `/opt/python/3.11`, sans modifier le Python du système). Ce qui suit résume les différences.
+
 Tout ce document a été validé avec un bastion **Ubuntu 24.04**. Si le bastion est sous **RHEL 8.10**, le scrutateur (code Python, service systemd, configuration) et les tableaux de bord Grafana sont les mêmes ; seules changent l'installation des paquets et quelques points propres à RHEL. Cette variante **n'a pas été testée** : à valider sur la machine et à corriger ici si besoin. Les exemples utilisent Python 3.11 (3.9 ou 3.12 conviennent aussi) et SELinux en mode `enforcing`.
 
 ### Python : le point bloquant
 
-Sur RHEL 8.10, `python3` est en version 3.6, trop ancienne pour `psycopg` 3 (3.8 minimum). Installer une version plus récente et créer le venv avec elle. Le paquet `python3-venv` n'existe pas sous RHEL : le module `venv` est inclus dans `python3.11`.
+Sur RHEL 8.10, `python3` est en version 3.6, trop ancienne pour `psycopg` 3 (3.8 minimum). Ne pas le remplacer (Ansible, `dnf` et les jobs du serveur en dépendent) : installer une version plus récente à côté, de préférence en local dans `/opt/python/3.11` (voir [installation_rhel8.md](installation_rhel8.md)), et créer le venv avec elle. Le paquet `python3-venv` n'existe pas sous RHEL : le module `venv` est inclus dans `python3.11`.
 
 Paquets et installation du scrutateur, à la place de la section 3.2 :
 
