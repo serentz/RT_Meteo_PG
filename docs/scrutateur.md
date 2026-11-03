@@ -404,13 +404,13 @@ Si plus de relevés sont en cours qu'il n'y a de threads, le journal affiche `N 
 
 ## Variante : bastion sous RHEL 8.10
 
-**Procédure complète pas à pas : [installation_rhel8.md](installation_rhel8.md)** (Python installé en local dans `/opt/python/3.11`, sans modifier le Python du système). Ce qui suit résume les différences.
+**Procédures complètes pas à pas** : [installation_rhel8_sans_root.md](installation_rhel8_sans_root.md) (Python 3.6.8 du système, sans droits root) ou [installation_rhel8.md](installation_rhel8.md) (Python récent installé à côté, avec `sudo`). Ce qui suit résume les différences.
 
 Tout ce document a été validé avec un bastion **Ubuntu 24.04**. Si le bastion est sous **RHEL 8.10**, le scrutateur (code Python, service systemd, configuration) et les tableaux de bord Grafana sont les mêmes ; seules changent l'installation des paquets et quelques points propres à RHEL. Cette variante **n'a pas été testée** : à valider sur la machine et à corriger ici si besoin. Les exemples utilisent Python 3.11 (3.9 ou 3.12 conviennent aussi) et SELinux en mode `enforcing`.
 
-### Python : le point bloquant
+### Python : le Python 3.6.8 du système suffit
 
-Sur RHEL 8.10, `python3` est en version 3.6, trop ancienne pour `psycopg` 3 (3.8 minimum). Ne pas le remplacer (Ansible, `dnf` et les jobs du serveur en dépendent) : installer une version plus récente à côté, de préférence en local dans `/opt/python/3.11` (voir [installation_rhel8.md](installation_rhel8.md)), et créer le venv avec elle. Le paquet `python3-venv` n'existe pas sous RHEL : le module `venv` est inclus dans `python3.11`.
+Sur RHEL 8.10, `python3` est en version 3.6.8, que le scrutateur **supporte** (code adapté, tests passés sous un vrai Python 3.6.8) : il n'y a rien à installer ni à modifier côté Python (Ansible, `dnf` et les jobs du serveur en dépendent). Pour une installation **sans droits root** avec ce Python, suivre [installation_rhel8_sans_root.md](installation_rhel8_sans_root.md). Pour utiliser un Python plus récent installé à côté (3.11 dans `/opt/python/3.11`, avec `sudo`), suivre [installation_rhel8.md](installation_rhel8.md). Le paquet `python3-venv` n'existe pas sous RHEL : le module `venv` est inclus dans `python3`.
 
 Paquets et installation du scrutateur, à la place de la section 3.2 :
 
@@ -517,7 +517,8 @@ Le test affiche `OK : tous les controles du schema sont passes` avant la derniè
 
 Réalisé dans l'environnement de préparation (Linux, PostgreSQL 16) :
 
-- 72 tests Python (calculs sur le tableau, lecture d'une instance avec un faux pilote `psycopg`, contrôle de `pg_monitor`, parallélisme, panne d'une instance, relecture de `meteo.instance`, panne du stockage, mot de passe masqué, cohérence entre la requête, le fichier SQL et le schéma) ;
+- 74 tests Python (calculs sur le tableau, lecture d'une instance avec un faux pilote `psycopg`, contrôle de `pg_monitor`, parallélisme, panne d'une instance, relecture de `meteo.instance`, panne du stockage, mot de passe masqué, cohérence entre la requête, le fichier SQL et le schéma) ;
+- compatibilité Python 3.6.8 (celui de RHEL 8) : mêmes tests passés sous un vrai Python 3.6.8 compilé depuis les sources, et sous Python 3.13 ; un test (`tests/test_compatibilite_python36.py`) interdit de réintroduire une construction absente de la 3.6. Le pilote `psycopg` 3.0 (série compatible avec la 3.6) et la connexion réelle sous Python 3.6 n'ont **pas** été essayés ;
 - schéma, vues, fonction d'écriture et droits des rôles testés sur un vrai PostgreSQL 16 (`tests/stockage/test_schema.sql`) ;
 - requête de `sql/cible/supervision.sql` exécutée sur un vrai PostgreSQL 16 avec bloqueur, session bloquée, requête longue, transaction ouverte inactive et login sans `pg_monitor`.
 

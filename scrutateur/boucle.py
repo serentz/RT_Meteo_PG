@@ -11,13 +11,11 @@ Passage a l'echelle (100 ou 200 instances) :
 - partition : plusieurs scrutateurs peuvent tourner cote a cote ; le scrutateur i/N ne prend que les instances
   dont instance_id % N == i. Chaque instance est relevee par un seul scrutateur, aucune n'est oubliee.
 """
-from __future__ import annotations
-
 import logging
 import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor, wait
-from typing import Callable, Protocol
+from typing import Callable, Dict, List, Optional
 
 from .cible import Source
 from .collecte import DepotEcriture, collecter_et_enregistrer
@@ -27,8 +25,8 @@ from .modeles import Instance
 journal = logging.getLogger("scrutateur.boucle")
 
 
-class Depot(DepotEcriture, Protocol):
-    def lire_instances(self) -> list[Instance]: ...
+class Depot(DepotEcriture):
+    def lire_instances(self) -> List[Instance]: ...
 
 
 class Scrutateur:
@@ -43,16 +41,16 @@ class Scrutateur:
         self._depot = depot
         self._source = source
         self._horloge = horloge
-        self._en_cours: dict[int, Future] = {}
-        self._pool: ThreadPoolExecutor | None = None
+        self._en_cours: Dict[int, Future] = {}
+        self._pool: Optional[ThreadPoolExecutor] = None
 
-    def instances_de_la_partition(self, instances: list[Instance]) -> list[Instance]:
+    def instances_de_la_partition(self, instances: List[Instance]) -> List[Instance]:
         """Les instances de ce scrutateur (instance_id % N == i), triees par identifiant."""
         r = self._reglages
         return sorted((i for i in instances if i.instance_id % r.partition_total == r.partition_index),
                       key=lambda i: i.instance_id)
 
-    def lancer_cycle(self, arret: threading.Event | None = None, etaler: bool = False) -> list[Future]:
+    def lancer_cycle(self, arret: Optional[threading.Event] = None, etaler: bool = False) -> List[Future]:
         """Lance le releve de chaque instance de la partition, en parallele. Rend les taches lancees (sans les attendre).
 
         etaler : le releve de la k-ieme instance (sur n) part a k/n * etalement_s apres le debut du cycle.
@@ -73,7 +71,7 @@ class Scrutateur:
             if self._en_cours[disparu].done():
                 del self._en_cours[disparu]
 
-        lancees: list[Future] = []
+        lancees: List[Future] = []
         file_saturee = False
         for rang, instance in enumerate(instances):
             if etaler and self._reglages.etalement_s > 0 and arret is not None:
@@ -117,5 +115,7 @@ class Scrutateur:
                     prochain = maintenant + self._reglages.intervalle_s
                 arret.wait(prochain - maintenant)
         finally:
-            pool.shutdown(wait=True, cancel_futures=True)  # les releves en cours se terminent (delais bornes)
+            for tache in list(self._en_cours.values()):  # les releves encore en attente ne demarrent pas (Python < 3.9 : pas de cancel_futures)
+                tache.cancel()
+            pool.shutdown(wait=True)  # les releves en cours se terminent (delais bornes)
             self._pool = None

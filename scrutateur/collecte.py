@@ -5,11 +5,9 @@ Elle ne leve jamais d'exception : un echec (instance injoignable, login refuse, 
 est enregistre comme une mesure 'erreur', ce qui donne l'etat 'inconnu' cote affichage, et n'empeche pas
 les autres instances d'etre relevees.
 """
-from __future__ import annotations
-
 import logging
 import time
-from typing import Callable, Protocol
+from typing import Callable
 
 from .cible import Source
 from .indicateurs import calculer_indicateurs
@@ -20,7 +18,7 @@ journal = logging.getLogger("scrutateur.collecte")
 LONGUEUR_MAX_ERREUR = 500
 
 
-class DepotEcriture(Protocol):
+class DepotEcriture:
     def enregistrer(self, mesure: Mesure) -> None: ...
 
 

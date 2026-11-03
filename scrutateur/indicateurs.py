@@ -13,7 +13,7 @@ Definitions (docs/architecture.md) :
 - Le detail conserve au plus MAX_DETAILS lignes (bloquees, puis transactions et requetes les plus longues d'abord) ;
   les indicateurs, eux, portent sur toutes les lignes lues.
 """
-from __future__ import annotations
+from typing import List
 
 from .modeles import Indicateurs, Lecture, LigneProcessus
 
@@ -47,5 +47,5 @@ def _priorite(p: LigneProcessus) -> tuple:
     return (-(p.blocage_s or 0), -(p.transaction_s or 0), -(p.execution_s or 0), p.pid)
 
 
-def _moyenne(valeurs: list[int]) -> float:
+def _moyenne(valeurs: List[int]) -> float:
     return round(sum(valeurs) / len(valeurs), 1) if valeurs else 0.0

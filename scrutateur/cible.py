@@ -9,9 +9,7 @@ Un controle prealable (tres leger) verifie que le login voit toutes les sessions
 sans cela PostgreSQL masque les sessions des autres utilisateurs et le tableau serait faussement vide.
 Le pilote (psycopg 3) est charge a la demande : le reste du scrutateur et ses tests n'en ont pas besoin.
 """
-from __future__ import annotations
-
-from typing import Callable
+from typing import Callable, Optional
 
 from .config import Reglages
 from .modeles import Instance, Lecture, LigneProcessus
@@ -110,9 +108,9 @@ def ligne_processus(r) -> LigneProcessus:
     )
 
 
-def _entier(valeur) -> int | None:
+def _entier(valeur) -> Optional[int]:
     return None if valeur is None else int(float(valeur))
 
 
-def _texte(valeur) -> str | None:
+def _texte(valeur) -> Optional[str]:
     return None if valeur is None else str(valeur).strip()

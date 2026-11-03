@@ -3,11 +3,9 @@
 En service : le fichier /etc/scrutateur/scrutateur.env (mode 0600, proprietaire root) charge par systemd.
 Modele sans secret : scrutateur/deploy/scrutateur.env.example
 """
-from __future__ import annotations
-
 import os
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import Mapping, Optional, Tuple
 
 
 class ErreurConfiguration(Exception):
@@ -27,7 +25,7 @@ class Reglages:
     partition_total: int = 1
 
     @classmethod
-    def depuis_env(cls, env: Mapping[str, str] | None = None) -> "Reglages":
+    def depuis_env(cls, env: Optional[Mapping[str, str]] = None) -> "Reglages":
         env = os.environ if env is None else env
         dsn = env.get("SCRUTATEUR_STOCKAGE_DSN", "").strip()
         if not dsn:
@@ -79,7 +77,7 @@ def _nombre(env: Mapping[str, str], cle: str, defaut, type_):
         raise ErreurConfiguration(f"{cle} : valeur numerique attendue, recu {brut!r}") from None
 
 
-def _partition(brut: str) -> tuple[int, int]:
+def _partition(brut: str) -> Tuple[int, int]:
     """'i/N' (i de 0 a N-1) -> (i, N). Vide : un seul scrutateur releve tout (0, 1)."""
     brut = brut.strip()
     if not brut:

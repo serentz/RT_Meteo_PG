@@ -1,6 +1,4 @@
 """Point d'entree : python -m scrutateur [--une-fois] [--tester NOM] [-v]"""
-from __future__ import annotations
-
 import argparse
 import json
 import logging
@@ -8,6 +6,8 @@ import signal
 import sys
 import threading
 from dataclasses import asdict
+
+from typing import List, Optional
 
 from .cible import creer_source_pg
 from .boucle import Scrutateur
@@ -18,7 +18,7 @@ from .store import Depot
 journal = logging.getLogger("scrutateur")
 
 
-def lire_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+def lire_arguments(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="scrutateur", description=__doc__)
     p.add_argument("--une-fois", action="store_true", help="un seul cycle (toutes les instances), puis quitter")
     p.add_argument(
@@ -29,7 +29,7 @@ def lire_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     args = lire_arguments(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

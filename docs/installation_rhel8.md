@@ -2,9 +2,11 @@
 
 Cette fiche installe le scrutateur et Grafana sur un bastion **RHEL 8.10**. Elle remplace les étapes `apt` de [scrutateur.md](scrutateur.md) (sections 3 et 4) ; les sections 1 et 2 (PostgreSQL, instances à surveiller) ne changent pas. **Non testée sur RHEL** : le code, lui, est validé sur Ubuntu 24.04 (voir [captures.md](captures.md)). Corriger cette fiche au premier essai si une commande diffère.
 
+> **Sans droits root** ou sans vouloir installer de Python : le scrutateur fonctionne avec le Python 3.6.8 du système, voir [installation_rhel8_sans_root.md](installation_rhel8_sans_root.md). Cette fiche-ci concerne l'installation d'un Python plus récent à côté.
+
 ## 1. Principe et garde-fous
 
-Sous RHEL 8, `python3` est en version 3.6 et Ansible, `dnf` et les jobs du serveur en dépendent. Le scrutateur demande **Python 3.8 minimum** (`psycopg` 3). On n'y touche donc pas : on installe un second Python, **local**, dans `/opt/python/3.11`, et le venv du scrutateur (`/opt/scrutateur/venv`) est construit avec lui. Le service systemd appelle `/opt/scrutateur/venv/bin/python` par son chemin complet : il ne dépend d'aucune variable `PATH` ni d'aucun lien dans `/usr/bin`.
+Sous RHEL 8, `python3` est en version 3.6 et Ansible, `dnf` et les jobs du serveur en dépendent. Le scrutateur fonctionne aussi avec le Python 3.6.8 du système (voir la fiche sans root), mais un Python plus récent reste préférable (3.6 n'est plus maintenu par la communauté Python). On n'y touche donc pas : on installe un second Python, **local**, dans `/opt/python/3.11`, et le venv du scrutateur (`/opt/scrutateur/venv`) est construit avec lui. Le service systemd appelle `/opt/scrutateur/venv/bin/python` par son chemin complet : il ne dépend d'aucune variable `PATH` ni d'aucun lien dans `/usr/bin`.
 
 | À faire | À ne pas faire |
 |---|---|

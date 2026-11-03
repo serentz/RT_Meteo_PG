@@ -12,7 +12,7 @@ Le script Hyper-V prépare trois VM Ubuntu et installe leurs OS. Il n'installe n
 | pg01 | Ubuntu Server 24.04 LTS | 192.168.50.11 | 2 CPU, 4 Go, 30 Go | PostgreSQL de **stockage** (schéma `meteo`) |
 | pg02 | Ubuntu Server 24.04 LTS | 192.168.50.21 | 2 CPU, 4 Go, 30 Go | PostgreSQL **surveillé** (interrogé à distance, ni agent ni extension) |
 
-Voir [Installation des VM](docs/installation_vm.md), [Scrutateur](docs/scrutateur.md), [Bastion sous RHEL 8.10](docs/installation_rhel8.md), [Synchronisation Windows/GitHub](docs/transfert_github.md) et [Spécification du monitoring](docs/architecture.md).
+Voir [Installation des VM](docs/installation_vm.md), [Scrutateur](docs/scrutateur.md), [Bastion sous RHEL 8.10](docs/installation_rhel8.md) ([sans root, Python 3.6.8](docs/installation_rhel8_sans_root.md)), [Synchronisation Windows/GitHub](docs/transfert_github.md) et [Spécification du monitoring](docs/architecture.md).
 
 ## Fonctionnement
 
@@ -35,4 +35,4 @@ Voir [Installation des VM](docs/installation_vm.md), [Scrutateur](docs/scrutateu
 
 ## État de validation
 
-Contrôlé dans l'environnement de préparation (Linux, PostgreSQL 16) : 72 tests Python et le test SQL du schéma passent. Validé sur les VM Hyper-V (bastion, `pg01`, `pg02`) : création des VM, scrutateur avec `psycopg` sur deux instances, service systemd, Grafana et scénarios soleil, requête longue, blocage, transaction ouverte, arrêt et reprise (voir [docs/captures.md](docs/captures.md)). **Reste à valider** : les seuils (provisoires), l'étalement et la partition avec des instances réellement distinctes (validés sur le projet SAP ASE avec 41 instances simulées), et `blocage_s` (approximation, voir [docs/scrutateur.md](docs/scrutateur.md), section « Validation »).
+Contrôlé dans l'environnement de préparation (Linux, PostgreSQL 16) : 74 tests Python et le test SQL du schéma passent. Validé sur les VM Hyper-V (bastion, `pg01`, `pg02`) : création des VM, scrutateur avec `psycopg` sur deux instances, service systemd, Grafana et scénarios soleil, requête longue, blocage, transaction ouverte, arrêt et reprise (voir [docs/captures.md](docs/captures.md)). **Reste à valider** : les seuils (provisoires), l'étalement et la partition avec des instances réellement distinctes (validés sur le projet SAP ASE avec 41 instances simulées), et `blocage_s` (approximation, voir [docs/scrutateur.md](docs/scrutateur.md), section « Validation »).

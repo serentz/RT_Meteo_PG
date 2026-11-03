@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 import unittest
@@ -210,8 +211,20 @@ class TestPassageALEchelle(unittest.TestCase):
     def test_pas_d_avertissement_quand_les_threads_suffisent(self):
         depot = FauxDepot([instance(i) for i in range(1, 4)])
         s = Scrutateur(reglages(parallele=16), depot, lambda i: lecture_vide())
-        with self.assertNoLogs("scrutateur.boucle", level="WARNING"):
+        # assertNoLogs n'existe qu'a partir de Python 3.10 : capteur de journal equivalent
+        recus = []
+
+        class Capteur(logging.Handler):
+            def emit(self, record):
+                recus.append(record.getMessage())
+
+        capteur, journal = Capteur(level=logging.WARNING), logging.getLogger("scrutateur.boucle")
+        journal.addHandler(capteur)
+        try:
             s.executer(threading.Event(), une_fois=True)
+        finally:
+            journal.removeHandler(capteur)
+        self.assertEqual(recus, [])
 
 
 if __name__ == "__main__":

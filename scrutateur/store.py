@@ -4,10 +4,8 @@ Le role PostgreSQL du scrutateur n'a que SELECT sur meteo.instance et EXECUTE su
 meteo.enregistrer_mesure (sql/stockage/002_roles.sql). Chaque appel ouvre sa propre connexion :
 c'est sur (un releve par instance et par minute) et cela evite de partager une connexion entre threads.
 """
-from __future__ import annotations
-
 import json
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional, Tuple
 
 from .modeles import Instance, Mesure
 
@@ -28,7 +26,7 @@ SELECT meteo.enregistrer_mesure(
 DELAI_CONNEXION_S = 10
 
 
-def parametres_enregistrement(mesure: Mesure) -> tuple[Any, ...]:
+def parametres_enregistrement(mesure: Mesure) -> Tuple[Any, ...]:
     """Parametres de SQL_ENREGISTRER, dans l'ordre des %s."""
     ind = mesure.indicateurs
     if mesure.statut == "ok" and ind is not None:
@@ -70,11 +68,11 @@ def _connecter_psycopg(dsn: str):
 
 
 class Depot:
-    def __init__(self, dsn: str, connecter: Callable[[str], Any] | None = None):
+    def __init__(self, dsn: str, connecter: Optional[Callable[[str], Any]] = None):
         self._dsn = dsn
         self._connecter = connecter or _connecter_psycopg
 
-    def lire_instances(self) -> list[Instance]:
+    def lire_instances(self) -> List[Instance]:
         with self._connecter(self._dsn) as conn:
             lignes = conn.execute(SQL_INSTANCES).fetchall()
         return [
