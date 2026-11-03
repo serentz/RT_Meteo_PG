@@ -110,11 +110,13 @@ python3 --version
 
 Cette installation ajoute `/usr/bin/python3.11` mais ne change pas `python3` (toujours 3.6). Ne **jamais** lancer `alternatives --set python3 /usr/bin/python3.11`. Dans le reste de la fiche, remplacer `/opt/python/3.11/bin/python3.11` par `/usr/bin/python3.11`.
 
-### 3.6 Variante : Python installé dans /home/sybase (compte sans droits root)
+### 3.6 Variante : Python dans /home/sybase et service sous le compte `sybase`
 
-Si Python doit être installé dans le dossier personnel du compte `sybase` (au lieu de `/opt/python/3.11`), la compilation se fait sans `sudo`, mais le service `scrutateur` (qui tourne sous un autre compte, avec `ProtectHome=true`) ne pourra pas le lire sans trois réglages. Préférer `/opt/python/3.11` quand `sudo` est disponible : il n'exige rien de ce qui suit.
+Configuration retenue quand le scrutateur doit s'exécuter sous le compte `sybase` et que Python est installé dans son dossier personnel. Dans ce cas **aucun compte `scrutateur` n'est créé**. Préférer `/opt/python/3.11` et un compte dédié quand c'est possible : le scrutateur reçoit ici les droits du compte `sybase`, et son fichier de configuration (mots de passe) lui est lisible.
 
-**1. Compiler en tant que `sybase`** (les paquets de l'étape 3.1 sont à installer une fois par un compte `sudo`). À la place de 3.3, sous `sudo -iu sybase` :
+Vérifier d'abord le compte et son groupe : `id sybase` (la suite suppose un groupe principal `sybase` ; sinon, remplacer `sybase` par le groupe affiché après `gid=`).
+
+**1. Compiler Python en tant que `sybase`** (les paquets de l'étape 3.1 sont à installer une fois par un compte `sudo`). À la place de 3.3, sous `sudo -iu sybase` :
 
 ```bash
 tar xzf Python-3.11.9.tgz
@@ -125,33 +127,37 @@ make altinstall
 /home/sybase/python-3.11/bin/python3.11 --version
 ```
 
-Dans la suite de la fiche, remplacer `/opt/python/3.11` par `/home/sybase/python-3.11` (étapes 3.4, 5.2, 5.5, 9 et le dépannage).
+Aucun droit à ouvrir sur `/home/sybase` : le service s'exécute sous le même compte, qui lit déjà son dossier.
 
-**2. Laisser le compte `scrutateur` lire Python** (sur un compte `sudo`). Un dossier personnel RHEL est en `0700` : ouvrir seulement la traversée, sans droit de listage, et la lecture de l'arborescence Python.
+**2. Adapter les étapes 5.2, 5.5 et 5.6** (remplacer aussi `/opt/python/3.11` par `/home/sybase/python-3.11` dans 3.4, 5.2, 5.5, 9 et le dépannage) :
+
+| Étape | À la place de | Écrire |
+|---|---|---|
+| 5.2 | `sudo useradd --system … scrutateur` | **ne pas l'exécuter** (pas de compte `scrutateur`) |
+| 5.5 | `install -m 0640 -o root -g scrutateur …` | `sudo install -m 0640 -o root -g sybase scrutateur/deploy/scrutateur.env.example /etc/scrutateur/scrutateur.env` |
+| 5.5 (partitions) | fichiers `/etc/scrutateur/partition-N.env` | `sudo chown root:sybase` et `sudo chmod 0640` sur chacun |
+| 5.6 | `sudo -u scrutateur bash -c '…'` | `sudo -u sybase bash -c '…'` (même commande entre apostrophes) |
+
+Le répertoire `/opt/scrutateur` (code et venv) reste propriété de `root` et lisible par tous : le service n'y écrit rien.
+
+**3. Faire tourner le service sous `sybase`.** Les fichiers `scrutateur.service` et `scrutateur@.service` du dépôt indiquent `User=scrutateur` et `Group=scrutateur` : ne pas les modifier, ajouter un réglage local qui les remplace. Sans `Group=sybase`, systemd refuse de démarrer le service (`status=216/GROUP`). `ProtectHome=true` rend `/home` invisible au service : le passer en lecture seule.
 
 ```bash
-sudo chmod o+x /home/sybase
-sudo chmod -R o+rX /home/sybase/python-3.11
-namei -l /home/sybase/python-3.11/bin/python3.11
-sudo -u scrutateur /home/sybase/python-3.11/bin/python3.11 --version
-```
-
-La dernière commande doit afficher `Python 3.11.9`. Le venv (créé en 5.2 avec ce Python) pointe vers ce dossier : ne pas le supprimer ni le déplacer.
-
-**3. Autoriser le service à voir `/home`.** `ProtectHome=true` rend `/home` invisible au service ; le passer en lecture seule, sans modifier les fichiers du dépôt (réglage local, à refaire pour le modèle `scrutateur@.service` si les partitions sont utilisées) :
-
-```bash
-sudo mkdir -p /etc/systemd/system/scrutateur.service.d
-sudo tee /etc/systemd/system/scrutateur.service.d/home.conf > /dev/null <<'EOT'
+sudo mkdir -p /etc/systemd/system/scrutateur.service.d /etc/systemd/system/scrutateur@.service.d
+sudo tee /etc/systemd/system/scrutateur.service.d/sybase.conf > /dev/null <<'EOT'
 [Service]
+User=sybase
+Group=sybase
 ProtectHome=read-only
 EOT
-sudo mkdir -p /etc/systemd/system/scrutateur@.service.d
-sudo cp /etc/systemd/system/scrutateur.service.d/home.conf /etc/systemd/system/scrutateur@.service.d/home.conf
+sudo cp /etc/systemd/system/scrutateur.service.d/sybase.conf /etc/systemd/system/scrutateur@.service.d/sybase.conf
 sudo systemctl daemon-reload
+systemctl show scrutateur -p User -p Group -p ProtectHome
 ```
 
-**4. SELinux.** Les fichiers de `/home` portent le contexte `user_home_t`, que SELinux refuse en général d'exécuter depuis un service. Si `systemctl status scrutateur` affiche `status=203/EXEC` ou si `sudo ausearch -m avc -ts recent` montre un refus :
+La dernière commande doit afficher `User=sybase`, `Group=sybase`, `ProtectHome=read-only`. Le service ne lit pas le profil du compte (`.bash_profile`) : les variables d'environnement d'ASE (`SYBASE`, etc.) ne sont ni utilisées ni nécessaires.
+
+**4. SELinux.** Les fichiers de `/home` portent le contexte `user_home_t`, que SELinux refuse en général d'exécuter depuis un service, même sous le compte propriétaire. Si `systemctl status scrutateur` affiche `status=203/EXEC` ou si `sudo ausearch -m avc -ts recent` montre un refus :
 
 ```bash
 sudo semanage fcontext -a -t bin_t '/home/sybase/python-3.11(/.*)?'
@@ -160,7 +166,7 @@ sudo restorecon -Rv /home/sybase/python-3.11
 
 Si `semanage` est absent : `sudo dnf install -y policycoreutils-python-utils`. Ne pas passer SELinux en `permissive` avant d'avoir lu les refus.
 
-**Autre solution** : faire tourner le service sous le compte `sybase` (`User=sybase` dans le même fichier `home.conf`), ce qui évite les points 2 et 4 mais donne au scrutateur les droits du compte `sybase` : moins propre.
+Le venv (créé en 5.2 avec ce Python) pointe vers `/home/sybase/python-3.11` : ne pas supprimer ni déplacer ce dossier tant que le scrutateur tourne.
 
 ## 4. Paquets système du bastion
 
@@ -190,7 +196,7 @@ scp -r I:\POC\RT_Meteo_PG\scrutateur I:\POC\RT_Meteo_PG\sql admin01@192.168.50.1
 ### 5.2 Compte de service, dossiers, venv
 
 ```bash
-sudo useradd --system --home-dir /opt/scrutateur --shell /sbin/nologin scrutateur
+sudo useradd --system --home-dir /opt/scrutateur --shell /sbin/nologin scrutateur   # ne pas exécuter si le service tourne sous sybase (3.6)
 sudo mkdir -p /opt/scrutateur/app /etc/scrutateur
 sudo cp -r scrutateur /opt/scrutateur/app/
 sudo /opt/python/3.11/bin/python3.11 -m venv /opt/scrutateur/venv
