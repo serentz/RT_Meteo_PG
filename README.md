@@ -12,6 +12,8 @@ Le script Hyper-V prépare trois VM Ubuntu et installe leurs OS. Il n'installe n
 | pg01 | Ubuntu Server 24.04 LTS | 192.168.50.11 | 2 CPU, 4 Go, 30 Go | PostgreSQL de **stockage** (schéma `meteo`) |
 | pg02 | Ubuntu Server 24.04 LTS | 192.168.50.21 | 2 CPU, 4 Go, 30 Go | PostgreSQL **surveillé** (interrogé à distance, ni agent ni extension) |
 
+**Utilisateurs et exploitants : [Guide utilisateur](docs/guide_utilisateur.md)** (lire les écrans, diagnostiquer, gérer instances et seuils).
+
 Voir [Installation des VM](docs/installation_vm.md), [Scrutateur](docs/scrutateur.md), [Bastion sous RHEL 8.10](docs/installation_rhel8.md) ([sans root, Python 3.6.8](docs/installation_rhel8_sans_root.md)), [Synchronisation Windows/GitHub](docs/transfert_github.md) et [Spécification du monitoring](docs/architecture.md).
 
 ## Fonctionnement
